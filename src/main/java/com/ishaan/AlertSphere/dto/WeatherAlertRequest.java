@@ -1,44 +1,19 @@
-package com.ishaan.AlertSphere.entity;
+package com.ishaan.AlertSphere.dto;
 
 import com.ishaan.AlertSphere.enums.AlertConditionType;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
-
-@Document(collection = "alerts")
 @Data
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class Alert {
-
-    @Id
-    private ObjectId id;
-
-    @NotBlank
-    @Indexed
-    private String userId;
-
-    @NotBlank
-    private String userEmail;
+public class WeatherAlertRequest {
 
     @NotBlank
     @Size(max = 100)
-    @Indexed
     private String city;
 
     private Double temperatureAbove;
@@ -58,21 +33,11 @@ public class Alert {
     @Size(max = 50)
     private String weatherCondition;
 
-    @NotNull
-    @Builder.Default
-    private Boolean active = true;
-
-    @NotNull
-    @Builder.Default
-    private AlertConditionType conditionType = AlertConditionType.AND;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime lastTriggeredAt;
+    private Boolean active;
+    private AlertConditionType conditionType;
 
     @Min(0)
-    @Builder.Default
-    private Integer cooldownMinutes = 30;
+    private Integer cooldownMinutes;
 
     @AssertTrue(message = "At least one weather condition must be defined")
     public boolean hasAtLeastOneCondition() {
