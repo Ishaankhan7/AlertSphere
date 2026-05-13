@@ -7,7 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 		"spring.mongodb.auto-index-creation=false",
 		"spring.data.mongodb.auto-index-creation=false",
 		"alerts.weather-check.enabled=false",
-		"alerts.kafka.consumer.enabled=false"
+		"alerts.kafka.consumer.enabled=false",
+		"alerts.devassist.consumer.enabled=false"
 })
 class AlertSphereApplicationTests {
 

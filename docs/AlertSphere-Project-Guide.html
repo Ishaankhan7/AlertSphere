@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AlertSphere — Project Guide (Spring Boot)</title>
+    <style>
+      :root {
+        --text: #111;
+        --muted: #555;
+        --bg: #fff;
+        --code-bg: #f6f8fa;
+        --border: #e5e7eb;
+        --accent: #1f6feb;
+      }
+
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+
+      html,
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans",
+          sans-serif;
+        line-height: 1.35;
+        font-size: 12.2pt;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+        margin: 1.1em 0 0.35em;
+      }
+
+      h1 {
+        font-size: 24pt;
+        margin-top: 0.2em;
+      }
+      h2 {
+        font-size: 16pt;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.2em;
+      }
+      h3 {
+        font-size: 13.5pt;
+        color: #222;
+      }
+
+      p {
+        margin: 0.5em 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .title-block {
+        border: 1px solid var(--border);
+        padding: 14pt 16pt;
+        border-radius: 10pt;
+        margin: 10pt 0 16pt;
+      }
+
+      .kvs {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 4pt 12pt;
+        margin-top: 10pt;
+        font-size: 11.5pt;
+      }
+      .kvs div:nth-child(odd) {
+        color: var(--muted);
+      }
+
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 10.8pt;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8pt;
+        padding: 10pt 12pt;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .inline-code {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 6pt;
+        padding: 0 4pt;
+      }
+
+      ul,
+      ol {
+        margin: 0.4em 0 0.6em 1.2em;
+      }
+      li {
+        margin: 0.15em 0;
+      }
+
+      .callout {
+        border-left: 4px solid var(--accent);
+        background: #f0f6ff;
+        padding: 10pt 12pt;
+        border-radius: 8pt;
+        margin: 10pt 0;
+      }
+
+      .warn {
+        border-left-color: #b42318;
+        background: #fff5f5;
+      }
+
+      .page-break {
+        break-before: page;
+        page-break-before: always;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10pt 0;
+        font-size: 11.3pt;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 6pt 8pt;
+        vertical-align: top;
+      }
+      th {
+        background: #f3f4f6;
+        text-align: left;
+      }
+
+      .toc a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .toc a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title-block">
+      <h1>AlertSphere — Project Guide</h1>
+      <p class="muted">
+        A “professor style” deep-dive explaining how your Spring Boot backend works: APIs, security (Spring Security +
+        JWT), business layer, MongoDB/Redis/Kafka/email, and common interview questions.
+      </p>
+      <div class="kvs">
+        <div>Project type</div>
+        <div>Spring Boot REST API backend</div>
+        <div>Main domain</div>
+        <div>Weather alerts (rule engine + scheduled checks + notifications)</div>
+        <div>Key integrations</div>
+        <div>MongoDB, Redis, Kafka, SMTP email, OpenWeather API</div>
+        <div>Auth model</div>
+        <div>JWT (stateless) + Spring Security role-based access</div>
+      </div>
+    </div>
+
+    <h2 id="toc">Table of Contents</h2>
+    <ol class="toc">
+      <li><a href="#overview">One-page overview</a></li>
+      <li><a href="#architecture">Architecture & request lifecycle</a></li>
+      <li><a href="#api">API endpoints & how to test</a></li>
+      <li><a href="#security">Spring Security + JWT (deep explanation)</a></li>
+      <li><a href="#business">Business layer (services) breakdown</a></li>
+      <li><a href="#data">Data layer (MongoDB) breakdown</a></li>
+      <li><a href="#redis">Redis caching + cooldown locks</a></li>
+      <li><a href="#kafka">Kafka event pipeline + reliability</a></li>
+      <li><a href="#mail">Email delivery (SMTP)</a></li>
+      <li><a href="#properties">Configuration (application.properties)</a></li>
+      <li><a href="#glossary">Glossary (important terms & annotations)</a></li>
+      <li><a href="#interview">Interview presentation + Q&amp;A bank</a></li>
+    </ol>
+
+    <h2 id="overview">1) One-page overview</h2>
+    <p>
+      <strong>AlertSphere</strong> is a Spring Boot backend where a user can sign up, sign in, create weather-alert rules
+      for a city, and automatically receive an email when the weather matches their rule.
+    </p>
+    <ul>
+      <li><strong>Auth</strong>: Username/password login returns a JWT token. All protected endpoints require <span class="inline-code">Authorization: Bearer &lt;jwt&gt;</span>.</li>
+      <li><strong>Persistence</strong>: Users and Alerts are stored in MongoDB documents.</li>
+      <li><strong>Automation</strong>: A scheduler runs periodically to check weather for all active alerts.</li>
+      <li><strong>Performance</strong>: Redis caches weather responses per city (TTL).</li>
+      <li><strong>Reliability</strong>: Redis cooldown locks reduce duplicate notifications; Kafka decouples “detect” and “send email”.</li>
+      <li><strong>Notification</strong>: When an alert triggers → publish Kafka event → consumer sends email → DB marks alert triggered.</li>
+    </ul>
+
+    <div class="callout warn">
+      <strong>Important “real-world” note:</strong> production systems should not hardcode secrets in code/properties,
+      and admin creation endpoints must be protected. This guide explains how things work and also highlights typical
+      improvements to discuss in interviews.
+    </div>
+
+    <h2 id="architecture" class="page-break">2) Architecture & request lifecycle</h2>
+    <h3>2.1 Layered architecture</h3>
+    <p>Think of your backend in layers (each layer has a job):</p>
+    <ul>
+      <li><strong>Controller layer</strong> (API): HTTP in/out, validation, status codes.</li>
+      <li><strong>Service layer</strong> (Business): rule evaluation, workflows, orchestration.</li>
+      <li><strong>Repository layer</strong> (Data): MongoDB queries and persistence.</li>
+      <li><strong>Integration layer</strong>: Redis cache/locks, Kafka events, SMTP email, OpenWeather HTTP calls.</li>
+    </ul>
+
+    <h3>2.2 “What happens when a request arrives?”</h3>
+    <p>For a protected endpoint like <span class="inline-code">GET /alert</span>:</p>
+    <ol>
+      <li><strong>Spring Security filter chain</strong> runs first.</li>
+      <li><strong>JwtFilter</strong> tries to authenticate the request using the Bearer token.</li>
+      <li>If the token is valid, Spring sets <strong>SecurityContext</strong> with the authenticated user.</li>
+      <li>Spring checks authorization rules (e.g., “authenticated required”).</li>
+      <li>Controller method executes, reads the current user from SecurityContext, calls services, returns response.</li>
+    </ol>
+
+    <h3>2.3 “What happens on alert trigger?”</h3>
+    <p>Background flow (no HTTP request):</p>
+    <ol>
+      <li>Scheduler runs and loads active alerts.</li>
+      <li>For each city: get weather (Redis cache first, else OpenWeather API).</li>
+      <li>Evaluate alert rules in <strong>AlertService.shouldTrigger</strong>.</li>
+      <li>If triggered: acquire cooldown lock in Redis to avoid duplicates.</li>
+      <li>Publish event to Kafka; consumer sends email and marks DB state.</li>
+    </ol>
+
+    <h2 id="api" class="page-break">3) API endpoints & how to test</h2>
+    <p class="muted">Base URL is usually <span class="inline-code">http://localhost:8080</span> unless configured.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Endpoint</th>
+          <th>Auth</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="inline-code">GET /auth/health-check</span></td>
+          <td>No</td>
+          <td>Simple health check</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">POST /auth/signup</span></td>
+          <td>No</td>
+          <td>Create a user</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">POST /auth/signin</span></td>
+          <td>No</td>
+          <td>Login and receive a JWT</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">POST /alert/create-alert</span></td>
+          <td>JWT</td>
+          <td>Create an alert rule</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">GET /alert</span></td>
+          <td>JWT</td>
+          <td>List current user’s alerts</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">GET /alert/{id}</span></td>
+          <td>JWT</td>
+          <td>Fetch one alert</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">PUT /alert/{id}</span></td>
+          <td>JWT</td>
+          <td>Update an alert</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">DELETE /alert/{id}</span></td>
+          <td>JWT</td>
+          <td>Delete an alert</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">POST /user/update-user</span></td>
+          <td>JWT</td>
+          <td>Update username/password</td>
+        </tr>
+        <tr>
+          <td><span class="inline-code">GET /admin/all-users</span></td>
+          <td>ADMIN</td>
+          <td>Admin-only list users</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3.1 Example test sequence (curl)</h3>
+    <p class="muted">
+      Note: In PowerShell, <span class="inline-code">curl</span> can be an alias of <span class="inline-code">Invoke-WebRequest</span>.
+      To use real curl, prefer <span class="inline-code">curl.exe</span>.
+    </p>
+
+    <p>1) Signup (PowerShell + curl.exe):</p>
+    <pre>curl.exe -X POST "http://localhost:8080/auth/signup" -H "Content-Type: application/json" -d "{\"userName\":\"alice\",\"password\":\"pass123\",\"email\":\"alice@example.com\"}"</pre>
+
+    <p>2) Signin (get JWT):</p>
+    <pre>curl.exe -X POST "http://localhost:8080/auth/signin" -H "Content-Type: application/json" -d "{\"userName\":\"alice\",\"password\":\"pass123\"}"</pre>
+
+    <p>3) Use JWT for protected API:</p>
+    <pre>curl.exe "http://localhost:8080/alert" -H "Authorization: Bearer &lt;JWT_FROM_SIGNIN&gt;"</pre>
+
+    <p>4) Create an alert rule:</p>
+    <pre>curl.exe -X POST "http://localhost:8080/alert/create-alert" -H "Authorization: Bearer &lt;JWT_FROM_SIGNIN&gt;" -H "Content-Type: application/json" -d "{\"city\":\"Delhi\",\"temperatureAbove\":30,\"humidityBelow\":80,\"conditionType\":\"AND\",\"cooldownMinutes\":30,\"active\":true}"</pre>
+
+    <p>Optional: The same using PowerShell <span class="inline-code">Invoke-RestMethod</span>:</p>
+    <pre>$jwt = "&lt;JWT_FROM_SIGNIN&gt;"
+$headers = @{ Authorization = "Bearer $jwt" }
+
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/alert" -Headers $headers
+
+$body = @{
+  city = "Delhi"
+  temperatureAbove = 30
+  humidityBelow = 80
+  conditionType = "AND"
+  cooldownMinutes = 30
+  active = $true
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/alert/create-alert" -Headers $headers -ContentType "application/json" -Body $body</pre>
+
+    <h2 id="security" class="page-break">4) Spring Security + JWT (deep explanation)</h2>
+    <div class="callout">
+      <strong>How to study this section:</strong> First learn the vocabulary (Authentication/Authorization, Filter,
+      SecurityContext). Then follow the two end-to-end flows:
+      <span class="inline-code">/auth/signin</span> (login) and <span class="inline-code">/alert</span> (request with JWT).
+      If you can explain those two flows clearly, you can explain the whole security system in an interview.
+    </div>
+    <h3>4.1 Authentication vs Authorization</h3>
+    <ul>
+      <li><strong>Authentication</strong> = prove who you are.</li>
+      <li><strong>Authorization</strong> = what you’re allowed to do (roles/permissions).</li>
+    </ul>
+
+    <h3>4.2 Your security rules (who can call what)</h3>
+    <p>
+      In <span class="inline-code">SpringSecurity.securityFilterChain</span> you define rules:
+    </p>
+    <ul>
+      <li><span class="inline-code">/auth/**</span> → permit all (public endpoints)</li>
+      <li><span class="inline-code">/alert/**</span> and <span class="inline-code">/user/**</span> → must be authenticated</li>
+      <li><span class="inline-code">/admin/**</span> → must have role ADMIN</li>
+    </ul>
+    <p class="muted">
+      Code reference: <span class="inline-code">src/main/java/com/ishaan/AlertSphere/config/SpringSecurity.java:37</span>
+    </p>
+
+    <h3>4.3 Why stateless sessions?</h3>
+    <p>
+      <span class="inline-code">SessionCreationPolicy.STATELESS</span> means the server does not store login state in an
+      HTTP session. Instead, the client sends a JWT on every request.
+    </p>
+    <p><strong>Why this is good:</strong> easier scaling (multiple server instances) + works well for REST APIs.</p>
+
+    <h3>4.4 What is a “filter chain”?</h3>
+    <p>
+      A filter chain is a sequence of components that run before your controller method. Spring Security uses filters to
+      implement authentication/authorization consistently for every request.
+    </p>
+
+    <h3>4.5 Why add JwtFilter before UsernamePasswordAuthenticationFilter?</h3>
+    <p>
+      You call <span class="inline-code">http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)</span>.
+    </p>
+    <p><strong>The “why”:</strong></p>
+    <ul>
+      <li>Authorization decisions are based on <strong>SecurityContext</strong> (who is authenticated).</li>
+      <li>Your <strong>JwtFilter</strong> is what builds authentication from the Bearer token and stores it into SecurityContext.</li>
+      <li>So the JWT filter must run early enough that, when Spring checks <span class="inline-code">.authenticated()</span> / <span class="inline-code">.hasRole()</span>, it can see the user.</li>
+      <li>Using <span class="inline-code">UsernamePasswordAuthenticationFilter</span> as the anchor point is a common pattern (it’s an early, known filter in the chain).</li>
+    </ul>
+
+    <h3>4.6 What is AuthenticationManager? Why do you use it in /signin?</h3>
+    <p>
+      <strong>AuthenticationManager</strong> is the component that performs login authentication. In your code, you
+      call it during <span class="inline-code">POST /auth/signin</span>.
+    </p>
+    <p><strong>How it works (your exact flow):</strong></p>
+    <ol>
+      <li>User sends username &amp; password to <span class="inline-code">/auth/signin</span>.</li>
+      <li>You create an authentication request object:
+        <span class="inline-code">new UsernamePasswordAuthenticationToken(username, password)</span>.
+      </li>
+      <li>You call <span class="inline-code">authenticationManager.authenticate(...)</span>.</li>
+      <li>Spring delegates to an <strong>AuthenticationProvider</strong>. You configured:
+        <span class="inline-code">DaoAuthenticationProvider</span>.
+      </li>
+      <li><span class="inline-code">DaoAuthenticationProvider</span> calls your <strong>UserDetailsService</strong> to load user from MongoDB.</li>
+      <li>It uses <strong>PasswordEncoder</strong> (BCrypt) to compare raw password vs stored hash.</li>
+      <li>If valid → authentication success → you generate JWT and return it to the client.</li>
+    </ol>
+    <p class="muted">
+      Code references:
+      <span class="inline-code">PublicController.java:59</span>,
+      <span class="inline-code">SpringSecurity.java:51</span>,
+      <span class="inline-code">UserDetailsServiceImpl.java:20</span>
+    </p>
+
+    <h3>4.7 What is DaoAuthenticationProvider? (meaning + why)</h3>
+    <p>
+      <span class="inline-code">DaoAuthenticationProvider</span> is a built-in provider that authenticates a user by
+      loading their details via <span class="inline-code">UserDetailsService</span> and verifying the password with a
+      <span class="inline-code">PasswordEncoder</span>.
+    </p>
+    <p><strong>Why we use it:</strong> it’s the standard, secure way to implement username/password login in Spring Security.</p>
+
+    <h3>4.8 What is UserDetailsService? Why you implement it?</h3>
+    <p>
+      Spring Security does not want to know your database details. It only needs a standard method:
+      <span class="inline-code">loadUserByUsername</span>.
+    </p>
+    <p>
+      Your implementation loads <span class="inline-code">User</span> from MongoDB and returns Spring’s
+      <span class="inline-code">UserDetails</span> with roles.
+    </p>
+    <p class="muted">Code reference: <span class="inline-code">UserDetailsServiceImpl.java:20</span></p>
+
+    <h3>4.9 Roles vs Authorities (interview favorite)</h3>
+    <p>
+      In your code you set roles like <span class="inline-code">USER</span>, <span class="inline-code">ADMIN</span>.
+      Spring internally turns them into authorities like <span class="inline-code">ROLE_USER</span>,
+      <span class="inline-code">ROLE_ADMIN</span>.
+    </p>
+    <p>
+      That’s why <span class="inline-code">hasRole("ADMIN")</span> matches users whose authorities include
+      <span class="inline-code">ROLE_ADMIN</span>.
+    </p>
+
+    <h3>4.10 JWT: what it is, what your code checks</h3>
+    <p>
+      JWT is a signed token. Your server signs it with a secret key; later you verify the signature to ensure the token
+      wasn’t modified.
+    </p>
+    <ul>
+      <li><strong>Generate</strong>: <span class="inline-code">JwtUtil.generateToken(username)</span></li>
+      <li><strong>Parse/verify signature</strong>: <span class="inline-code">JwtUtil.extractAllClaims</span></li>
+      <li><strong>Validate</strong>: in your code, validation checks expiration (signature is verified during parsing)</li>
+    </ul>
+    <p class="muted">Code reference: <span class="inline-code">JwtUtil.java:30</span>, <span class="inline-code">JwtUtil.java:59</span></p>
+
+    <h3>4.11 JwtFilter: step-by-step for every request</h3>
+    <p>For a request like <span class="inline-code">GET /alert</span>:</p>
+    <ol>
+      <li>Read <span class="inline-code">Authorization</span> header.</li>
+      <li>If it starts with <span class="inline-code">Bearer </span>, extract the JWT string.</li>
+      <li>Extract username from token.</li>
+      <li>Load user details from DB.</li>
+      <li>If token not expired, build an authenticated token and set it into SecurityContext.</li>
+      <li>Continue to controller.</li>
+    </ol>
+    <p class="muted">Code reference: <span class="inline-code">JwtFilter.java:27</span></p>
+
+    <h3>4.12 Deep vocabulary (the words interviewers expect)</h3>
+    <ul>
+      <li>
+        <strong>Authentication</strong>: An object that represents “someone proved who they are”. In Spring it holds:
+        principal (who), credentials (proof), and authorities (roles/permissions).
+      </li>
+      <li>
+        <strong>Principal</strong>: Typically the username (or a full user object) representing the logged-in identity.
+        In your code it is derived from the JWT’s <span class="inline-code">sub</span> claim.
+      </li>
+      <li>
+        <strong>Authorities</strong>: A list of permissions, like <span class="inline-code">ROLE_ADMIN</span>. Spring
+        uses these for <span class="inline-code">hasRole</span>/<span class="inline-code">hasAuthority</span> checks.
+      </li>
+      <li>
+        <strong>SecurityContext</strong>: The per-request “box” that stores the current Authentication. Controllers read
+        it via <span class="inline-code">SecurityContextHolder</span>.
+      </li>
+      <li>
+        <strong>OncePerRequestFilter</strong>: A filter base class that guarantees your filter runs once per request.
+        Useful for JWT parsing because it should happen exactly once.
+      </li>
+    </ul>
+
+    <h3>4.13 End-to-end flow #1: Login (/auth/signin)</h3>
+    <p>This is how login works from HTTP request to JWT response:</p>
+    <ol>
+      <li>Client sends username/password.</li>
+      <li>
+        Controller creates a <span class="inline-code">UsernamePasswordAuthenticationToken</span> containing the raw
+        credentials. This token is an <em>authentication request</em>.
+      </li>
+      <li>
+        <span class="inline-code">AuthenticationManager.authenticate</span> receives the request and delegates to a
+        provider.
+      </li>
+      <li>
+        <span class="inline-code">DaoAuthenticationProvider</span> calls your
+        <span class="inline-code">UserDetailsServiceImpl.loadUserByUsername</span>.
+      </li>
+      <li>
+        Your service loads the user from MongoDB and returns <span class="inline-code">UserDetails</span> including the
+        stored BCrypt password hash and roles.
+      </li>
+      <li>
+        Provider uses your BCrypt <span class="inline-code">PasswordEncoder</span> to compare the raw password and the
+        stored hash. If it matches → authentication success.
+      </li>
+      <li>Controller generates JWT and returns it.</li>
+    </ol>
+
+    <h3>4.14 End-to-end flow #2: Protected request with JWT (GET /alert)</h3>
+    <p>This is how a JWT-secured endpoint works:</p>
+    <ol>
+      <li>Client calls <span class="inline-code">GET /alert</span> with header <span class="inline-code">Authorization: Bearer &lt;jwt&gt;</span>.</li>
+      <li><span class="inline-code">JwtFilter</span> runs before controllers.</li>
+      <li>It parses the token, verifies signature (during claim parsing), checks expiration, loads user details.</li>
+      <li>
+        It creates an authenticated <span class="inline-code">UsernamePasswordAuthenticationToken</span> and stores it
+        in <span class="inline-code">SecurityContextHolder</span>.
+      </li>
+      <li>
+        Spring evaluates authorization rules; since user is authenticated, it allows access.
+      </li>
+      <li>
+        Controller reads the username from SecurityContext and loads the user record to filter alerts by userId.
+      </li>
+    </ol>
+
+    <h3>4.15 Why do we load userDetails during JWT validation?</h3>
+    <p>
+      In your implementation, after extracting username, you call
+      <span class="inline-code">userDetailsService.loadUserByUsername</span>.
+    </p>
+    <p><strong>Reason:</strong></p>
+    <ul>
+      <li>To attach correct authorities/roles to the Authentication object.</li>
+      <li>To ensure the user still exists (deleted users should not be authenticated).</li>
+      <li>In more advanced systems: to compare token against a “token version” or revoked tokens list.</li>
+    </ul>
+
+    <h2 id="business" class="page-break">5) Business layer (services) breakdown</h2>
+    <p>
+      The <strong>service layer</strong> is your “use-case layer”. It contains the actual business rules and
+      orchestration.
+    </p>
+
+    <h3>5.1 UserService — why it exists</h3>
+    <p>File: <span class="inline-code">src/main/java/com/ishaan/AlertSphere/service/UserService.java</span></p>
+    <p><strong>Purpose:</strong> all user creation rules belong here, not in controllers.</p>
+    <ul>
+      <li>Hashes passwords with BCrypt (never store plain password).</li>
+      <li>Assigns roles.</li>
+      <li>Saves user document to MongoDB.</li>
+    </ul>
+
+    <h3>5.2 AlertService — the core domain logic</h3>
+    <p>File: <span class="inline-code">src/main/java/com/ishaan/AlertSphere/service/AlertService.java</span></p>
+    <h4>5.2.1 Create alert</h4>
+    <p>
+      <span class="inline-code">createAlert(request, user)</span> builds a new <span class="inline-code">Alert</span> document:
+    </p>
+    <ul>
+      <li>Copies rule fields from request (temperature/humidity/wind/condition).</li>
+      <li>Applies defaults (active, condition type, cooldown).</li>
+      <li>Stores <span class="inline-code">userId</span> and <span class="inline-code">userEmail</span> into the alert (so scheduler can email).</li>
+      <li>Saves into MongoDB repository.</li>
+    </ul>
+
+    <h4>5.2.2 Trigger evaluation algorithm (shouldTrigger)</h4>
+    <p>
+      <span class="inline-code">shouldTrigger(alert, weather)</span> decides if an alert matches current weather.
+    </p>
+    <p><strong>Step 1: guard checks</strong></p>
+    <ul>
+      <li>If not active → do not trigger.</li>
+      <li>If in cooldown (lastTriggeredAt + cooldownMinutes not passed) → do not trigger.</li>
+    </ul>
+    <p><strong>Step 2: build condition checks</strong></p>
+    <p>
+      The service creates a list of boolean checks only for fields the user configured:
+      <span class="inline-code">tempAbove</span>, <span class="inline-code">tempBelow</span>, <span class="inline-code">humidityAbove</span>, etc.
+    </p>
+    <p><strong>Step 3: apply AND/OR rule</strong></p>
+    <ul>
+      <li>If condition type is OR → any check true triggers.</li>
+      <li>Else AND → all checks must be true.</li>
+    </ul>
+    <div class="callout">
+      <strong>Interview-level explanation:</strong> this pattern is a small “rule engine”. You convert a user-defined
+      rule into independent checks and then fold them using AND/OR.
+    </div>
+
+    <h3>5.3 WeatherAlertScheduler — orchestration</h3>
+    <p>
+      The scheduler is what turns your app into an automated system, not just CRUD APIs.
+    </p>
+    <ul>
+      <li>Runs on a schedule (fixed delay from properties).</li>
+      <li>Loads all active alerts.</li>
+      <li>Groups by city to avoid duplicate weather calls.</li>
+      <li>For each city, fetch weather, find triggered alerts, lock cooldown, publish email events.</li>
+    </ul>
+
+    <h2 id="data" class="page-break">6) Data layer (MongoDB) breakdown</h2>
+    <h3>6.1 What is a “Document”?</h3>
+    <p>
+      MongoDB stores JSON-like records called <strong>documents</strong>. A collection is like a table.
+    </p>
+    <ul>
+      <li><span class="inline-code">User</span> is stored in collection <span class="inline-code">user</span>.</li>
+      <li><span class="inline-code">Alert</span> is stored in collection <span class="inline-code">alerts</span>.</li>
+    </ul>
+
+    <h3>6.2 Why indexes matter</h3>
+    <ul>
+      <li><span class="inline-code">@Indexed(unique=true)</span> on username enforces uniqueness and speeds lookups.</li>
+      <li>Indexing city and userId speeds “find alerts by city/user” queries used by scheduler and APIs.</li>
+    </ul>
+
+    <h3>6.3 Repositories</h3>
+    <p>
+      Spring Data creates implementations automatically for methods like:
+      <span class="inline-code">findByUserId</span>, <span class="inline-code">findByActiveTrue</span>, <span class="inline-code">findByCityIgnoreCaseAndActiveTrue</span>.
+    </p>
+
+    <h2 id="redis" class="page-break">7) Redis caching + cooldown locks</h2>
+    <h3>7.1 Weather cache (performance)</h3>
+    <p>
+      Weather responses are cached in Redis by city for a TTL (minutes). This reduces OpenWeather calls and speeds up
+      scheduler runs.
+    </p>
+    <p><strong>Why TTL?</strong> weather changes; TTL balances freshness and performance.</p>
+
+    <h3>7.2 Cooldown locks (anti-duplication)</h3>
+    <p>
+      Even if your business cooldown exists in MongoDB, multiple app instances or rapid scheduler runs can still cause
+      duplicates. Redis <span class="inline-code">SETNX + TTL</span> acts as a distributed lock:
+    </p>
+    <ul>
+      <li>If the lock key is absent, set it and proceed to send.</li>
+      <li>If key already exists, skip sending (someone already handled it recently).</li>
+    </ul>
+    <p><strong>Why return true when Redis is down?</strong> fail-open avoids missing alerts; you accept possible duplicates rather than losing notifications.</p>
+
+    <h2 id="kafka" class="page-break">8) Kafka event pipeline + reliability</h2>
+    <h3>8.1 Why Kafka here?</h3>
+    <p>
+      Kafka decouples “detect triggered alert” from “send email”. This allows scaling email workers and prevents the
+      scheduler from being blocked by slow SMTP.
+    </p>
+
+    <h3>8.2 Producer send is asynchronous</h3>
+    <p>
+      <span class="inline-code">kafkaTemplate.send(...)</span> returns a future; your code registers
+      <span class="inline-code">whenComplete</span> to log success/failure. Failures fallback to direct send.
+    </p>
+
+    <h3>8.3 Consumer groups and offsets (conceptual)</h3>
+    <ul>
+      <li><strong>Topic</strong> = stream of messages.</li>
+      <li><strong>Consumer group</strong> = many consumers share work; each message goes to exactly one consumer in the group.</li>
+      <li><strong>Offset</strong> = Kafka’s pointer for “how far you’ve read”.</li>
+      <li><strong>At-least-once delivery</strong> is common; duplicates can happen. Your cooldown lock helps reduce duplicates.</li>
+    </ul>
+
+    <h2 id="mail" class="page-break">9) Email delivery (SMTP)</h2>
+    <p>
+      Your app uses Spring Mail (<span class="inline-code">JavaMailSender</span>) to send an email with subject/body.
+      SMTP server details come from properties.
+    </p>
+    <ul>
+      <li>From: configured mail username</li>
+      <li>To: user’s email from the alert event</li>
+      <li>Body: formatted alert details (city/temp/humidity/wind/condition/time)</li>
+    </ul>
+
+    <h2 id="properties" class="page-break">10) Configuration (application.properties)</h2>
+    <p>
+      Spring Boot reads configuration from <span class="inline-code">src/main/resources/application.properties</span>.
+      These values configure database connections, Redis, Kafka, mail, and the scheduler.
+    </p>
+    <div class="callout warn">
+      <strong>Best practice:</strong> do not commit secrets. Use environment variables or a secret manager. For learning,
+      it’s OK, but in interviews mention you would externalize secrets.
+    </div>
+
+    <h2 id="glossary" class="page-break">11) Glossary (key terms & “what each word means”)</h2>
+    <h3>Spring / Java words</h3>
+    <ul>
+      <li><strong>Bean</strong>: an object created and managed by Spring.</li>
+      <li><strong>Dependency Injection</strong>: Spring provides required objects automatically.</li>
+      <li><strong>IoC Container</strong>: Spring’s runtime that stores and wires beans.</li>
+      <li><strong>DTO</strong>: “Data Transfer Object” used for requests/responses.</li>
+      <li><strong>Entity/Document</strong>: object stored in the database.</li>
+      <li><strong>Repository</strong>: abstraction for database operations.</li>
+    </ul>
+
+    <h3>Security words</h3>
+    <ul>
+      <li><strong>Principal</strong>: the “identity” (username/user).</li>
+      <li><strong>Credentials</strong>: proof (password/token).</li>
+      <li><strong>Authority</strong>: permission string (e.g., ROLE_ADMIN).</li>
+      <li><strong>Authentication</strong>: verified identity.</li>
+      <li><strong>Authorization</strong>: permission to access a resource.</li>
+      <li><strong>Stateless</strong>: server does not store session; client sends token each time.</li>
+    </ul>
+
+    <h3>Infra words</h3>
+    <ul>
+      <li><strong>MongoDB</strong>: document database.</li>
+      <li><strong>Redis</strong>: in-memory key/value store; great for cache and locks.</li>
+      <li><strong>Kafka</strong>: distributed log / messaging platform.</li>
+      <li><strong>SMTP</strong>: protocol to send email.</li>
+      <li><strong>TTL</strong>: time-to-live (auto-expire data after time).</li>
+    </ul>
+
+    <h2 id="interview" class="page-break">12) Interview presentation + Q&amp;A bank</h2>
+    <h3>12.1 2–3 minute presentation script</h3>
+    <pre>
+AlertSphere is a Spring Boot backend for automated weather notifications. Users sign up and authenticate using JWT.
+Alerts are stored in MongoDB as documents with rule fields such as temperatureAbove, humidityBelow, and windSpeedAbove,
+combined using AND/OR logic. A scheduled job periodically loads active alerts, groups them by city, and fetches current
+weather. To reduce external API calls, weather is cached in Redis with TTL. When an alert triggers, a Redis cooldown lock
+prevents duplicate notifications. The app publishes a weather-alert event to Kafka, and a Kafka consumer sends the email
+using SMTP and then marks the alert as triggered in MongoDB. If Kafka is unavailable, the producer falls back to direct
+email delivery. This design is stateless, scalable, and demonstrates layered architecture and event-driven communication.
+    </pre>
+
+    <h3>12.2 Common interviewer questions (with strong answers)</h3>
+    <ol>
+      <li>
+        <strong>Why JWT instead of sessions?</strong>
+        <p>Stateless APIs scale well. The server doesn’t store session state; each request carries a signed token.</p>
+      </li>
+      <li>
+        <strong>Why do you add JwtFilter before UsernamePasswordAuthenticationFilter?</strong>
+        <p>So authentication is established early in the filter chain before authorization rules are evaluated.</p>
+      </li>
+      <li>
+        <strong>What is AuthenticationManager?</strong>
+        <p>The central component that performs authentication by delegating to providers like DaoAuthenticationProvider.</p>
+      </li>
+      <li>
+        <strong>Why Redis when MongoDB already stores cooldown?</strong>
+        <p>Redis provides fast distributed locking to prevent duplicates under concurrency or multiple instances.</p>
+      </li>
+      <li>
+        <strong>Why Kafka?</strong>
+        <p>It decouples detection from delivery, improves scalability, and isolates slow email sending from the scheduler.</p>
+      </li>
+      <li>
+        <strong>What happens if Redis/Kafka is down?</strong>
+        <p>The app degrades gracefully: weather cache falls back to API; event publishing falls back to direct send.</p>
+      </li>
+      <li>
+        <strong>What improvements would you make for production?</strong>
+        <p>Externalize secrets, protect admin creation, add structured error responses, add API documentation (OpenAPI), add observability and more tests.</p>
+      </li>
+    </ol>
+  </body>
+</html>
+    <h4>5.2.3 Why store userEmail on Alert?</h4>
+    <p>
+      Your Alert document stores both <span class="inline-code">userId</span> and <span class="inline-code">userEmail</span>.
+      This reduces lookups during email sending: the event already has the email address.
+    </p>
+    <p><strong>Tradeoff:</strong> email changes require keeping alerts updated (or you accept “email at creation time”).</p>
+
+    <h4>5.2.4 Cooldown logic (MongoDB layer)</h4>
+    <p>
+      Cooldown prevents sending too frequently. In MongoDB you keep
+      <span class="inline-code">lastTriggeredAt</span> and <span class="inline-code">cooldownMinutes</span>.
+    </p>
+    <p>
+      When an alert triggers, you update <span class="inline-code">lastTriggeredAt</span>. Next evaluation checks:
+      <span class="inline-code">lastTriggeredAt + cooldownMinutes</span> must be before “now”.
+    </p>
+
+    <h3>5.4 WeatherService + WeatherCacheService</h3>
+    <p><strong>WeatherService</strong> calls the external API and builds <span class="inline-code">WeatherSnapshot</span>.</p>
+    <p><strong>WeatherCacheService</strong> wraps WeatherService with Redis caching:</p>
+    <ul>
+      <li>Cache key normalization makes “Delhi” and “delhi” the same cache key.</li>
+      <li>It catches Redis failures and continues (graceful degradation).</li>
+      <li>TTL is configurable via properties.</li>
+    </ul>
+
+    <h3>5.5 AlertCooldownService — why a distributed lock</h3>
+    <p>
+      The Redis lock prevents duplicates when multiple scheduler executions overlap or multiple instances run the same job.
+      It’s effectively a “try-lock” that expires automatically.
+    </p>
+
+    <h3>5.6 Kafka email pipeline services</h3>
+    <ul>
+      <li><strong>AlertEventProducer</strong>: publishes an event; if Kafka fails, sends directly.</li>
+      <li><strong>AlertEmailConsumer</strong>: reads events and triggers delivery.</li>
+      <li><strong>AlertEmailDeliveryService</strong>: sends and marks triggered in DB.</li>
+      <li><strong>EmailNotificationService</strong>: composes and sends SMTP email.</li>
+    </ul>
+
+    <h3>Annotation cheat-sheet (what each @ means)</h3>
+    <ul>
+      <li><strong>@RestController</strong>: class contains HTTP endpoints returning JSON/text.</li>
+      <li><strong>@RequestMapping</strong>: base path for all endpoints in a controller.</li>
+      <li><strong>@GetMapping / @PostMapping / @PutMapping / @DeleteMapping</strong>: maps HTTP method + path to a Java method.</li>
+      <li><strong>@Service</strong>: marks business-layer bean.</li>
+      <li><strong>@Configuration</strong>: class that defines beans and configuration.</li>
+      <li><strong>@Bean</strong>: method produces a bean instance for Spring to manage.</li>
+      <li><strong>@EnableWebSecurity</strong>: enables Spring Security integration.</li>
+      <li><strong>@EnableScheduling</strong>: enables scheduled jobs.</li>
+      <li><strong>@Scheduled</strong>: runs a method on a schedule.</li>
+      <li><strong>@EnableKafka</strong>: enables Kafka listener infrastructure.</li>
+      <li><strong>@KafkaListener</strong>: marks a method that consumes Kafka messages.</li>
+      <li><strong>@ConditionalOnProperty</strong>: bean is created only if a property matches; used for feature toggles.</li>
+      <li><strong>@Valid</strong>: triggers validation of request DTOs using Jakarta Validation annotations.</li>
+      <li><strong>@Value</strong>: injects a property value from configuration.</li>
+    </ul>

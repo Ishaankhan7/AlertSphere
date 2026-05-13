@@ -1,5 +1,6 @@
 package com.ishaan.AlertSphere.service;
 
+import com.ishaan.AlertSphere.dto.DevAssistIncidentEvent;
 import com.ishaan.AlertSphere.dto.WeatherAlertEmailEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -29,6 +30,15 @@ public class EmailNotificationService {
         mailSender.send(message);
     }
 
+    public void sendDevAssistIncidentAlert(DevAssistIncidentEvent event) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(event.getUserEmail());
+        message.setSubject("DevAssist incident: " + event.getApiName() + " is " + event.getTriggerStatus());
+        message.setText(buildDevAssistIncidentBody(event));
+        mailSender.send(message);
+    }
+
     private String buildBody(WeatherAlertEmailEvent event) {
         return """
                 Your weather alert condition matched.
@@ -46,6 +56,33 @@ public class EmailNotificationService {
                 event.getWindSpeed(),
                 event.getWeatherCondition(),
                 event.getTriggeredAt()
+        );
+    }
+
+    private String buildDevAssistIncidentBody(DevAssistIncidentEvent event) {
+        String displayName = event.getUserName() == null || event.getUserName().isBlank()
+                ? "there"
+                : event.getUserName();
+
+        return """
+                Hi %s,
+
+                DevAssist detected an incident for one of your monitored APIs.
+
+                API: %s
+                API ID: %s
+                Incident ID: %s
+                Status: %s
+                Message: %s
+                Occurred at: %s
+                """.formatted(
+                displayName,
+                event.getApiName(),
+                event.getApiId(),
+                event.getIncidentId(),
+                event.getTriggerStatus(),
+                event.getMessage(),
+                event.getOccurredAt()
         );
     }
 }
